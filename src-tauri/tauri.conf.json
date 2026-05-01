@@ -1,0 +1,73 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/schema.json",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devPath": "http://localhost:1420",
+    "distDir": "../dist"
+  },
+  "package": {
+    "productName": "ProteinScout",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "shell": {
+        "all": false,
+        "open": true
+      },
+      "dialog": {
+        "open": true,
+        "save": true
+      },
+      "fs": {
+        "all": true,
+        "scope": [
+          "$APPDATA/ProteinScout/**"
+        ]
+      }
+    },
+    "bundle": {
+      "active": true,
+      "targets": "nsis",
+      "identifier": "com.proteinscout.app",
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/icon.ico"
+      ],
+      "resources": [
+        "../backend/**/*"
+      ],
+      "externalBin": [],
+      "windows": {
+        "nsis": {
+          "installMode": "currentUser"
+        }
+      },
+      "linux": {
+        "packageType": "deb"
+      }
+    },
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "resizable": true,
+        "title": "ProteinScout",
+        "width": 1100,
+        "height": 720,
+        "minWidth": 800,
+        "minHeight": 600
+      }
+    ],
+    "linux": {
+      "bundle": {
+        "packageType": "deb"
+      }
+    }
+  }
+}
