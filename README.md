@@ -55,7 +55,7 @@ proteinscout/
 ```bash
 cd backend
 python -m venv venv
-venv\Scripts\activate          # Windows
+source venv/bin/activate          # Windows
 pip install -r requirements.txt
 uvicorn main:app --port 8000 --reload
 ```

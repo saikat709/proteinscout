@@ -46,6 +46,17 @@ def get_status():
 
 @router.post("/download")
 async def start_download():
+    # If Pfam is already installed and indexed, return an immediate done task
+    if pfam.is_pfam_ready():
+        task_id = str(uuid.uuid4())
+        _tasks[task_id] = {"status": "done", "percent": 100, "message": "Pfam already present"}
+        return {"task_id": task_id}
+
+    # If a download/index task is already running, return its task id so the frontend can poll it
+    for tid, t in _tasks.items():
+        if t.get("status") in ("downloading", "extracting", "indexing"):
+            return {"task_id": tid}
+
     task_id = str(uuid.uuid4())
     _tasks[task_id] = {"status": "downloading", "percent": 0, "message": "Starting…"}
 

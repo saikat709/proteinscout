@@ -12,7 +12,13 @@ app = FastAPI(title="ProteinScout API", version="0.1.0")
 # Allow Tauri/Vite dev server
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:1420", "tauri://localhost", "http://tauri.localhost"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:1420",
+        "tauri://localhost",
+        "http://tauri.localhost",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
