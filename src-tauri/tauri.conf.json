@@ -1,73 +1,40 @@
 {
-  "$schema": "../node_modules/@tauri-apps/cli/schema.json",
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "proteinscout",
+  "version": "0.1.0",
+  "identifier": "com.tauri.dev",
   "build": {
+    "frontendDist": "../build",
+    "devUrl": "http://localhost:3000",
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build",
-    "devPath": "http://localhost:1420",
-    "distDir": "../dist"
+    "beforeBuildCommand": "npm run build"
   },
-  "package": {
-    "productName": "ProteinScout",
-    "version": "0.1.0"
-  },
-  "tauri": {
-    "allowlist": {
-      "all": false,
-      "shell": {
-        "all": false,
-        "open": true
-      },
-      "dialog": {
-        "open": true,
-        "save": true
-      },
-      "fs": {
-        "all": true,
-        "scope": [
-          "$APPDATA/ProteinScout/**"
-        ]
-      }
-    },
-    "bundle": {
-      "active": true,
-      "targets": "nsis",
-      "identifier": "com.proteinscout.app",
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/icon.ico"
-      ],
-      "resources": [
-        "../backend/**/*"
-      ],
-      "externalBin": [],
-      "windows": {
-        "nsis": {
-          "installMode": "currentUser"
-        }
-      },
-      "linux": {
-        "packageType": "deb"
-      }
-    },
-    "security": {
-      "csp": null
-    },
+  "app": {
     "windows": [
       {
-        "fullscreen": false,
+        "title": "proteinscout",
+        "width": 800,
+        "height": 600,
         "resizable": true,
-        "title": "ProteinScout",
-        "width": 1100,
-        "height": 720,
-        "minWidth": 800,
-        "minHeight": 600
+        "fullscreen": false
       }
     ],
-    "linux": {
-      "bundle": {
-        "packageType": "deb"
-      }
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "android": {
+      "debugApplicationIdSuffix": ".debug"
     }
   }
 }

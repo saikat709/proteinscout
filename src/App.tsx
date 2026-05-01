@@ -15,7 +15,12 @@ export default function App() {
   const { state, result, error, progress, scan, reset } = useScanner();
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)]">
+    <div className="relative min-h-screen overflow-hidden bg-[var(--bg-primary)]">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-32 left-[-6rem] h-80 w-80 rounded-full bg-brand-500/10 blur-3xl" />
+        <div className="absolute top-24 right-[-5rem] h-72 w-72 rounded-full bg-emerald-400/8 blur-3xl" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/30 to-transparent" />
+      </div>
       <Toaster
         position="top-right"
         toastOptions={{
@@ -30,7 +35,7 @@ export default function App() {
 
       <AnimatePresence mode="wait">
         {view === "setup" ? (
-          <motion.div key="setup" exit={{ opacity: 0 }}>
+          <motion.div key="setup" exit={{ opacity: 0 }} className="relative z-10">
             <SetupWizard onReady={() => setView("main")} />
           </motion.div>
         ) : (
@@ -38,12 +43,12 @@ export default function App() {
             key="main"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-col min-h-screen"
+            className="relative z-10 flex flex-col min-h-screen"
           >
             {/* Header */}
-            <header className="border-b border-[var(--border)] px-8 py-4 flex items-center justify-between">
+            <header className="border-b border-white/8 bg-black/10 backdrop-blur-xl px-8 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-brand-500/15 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-brand-500/15 ring-1 ring-brand-500/20 flex items-center justify-center">
                   <Dna className="w-4 h-4 text-brand-400" />
                 </div>
                 <span className="font-semibold text-white">ProteinScout</span>
