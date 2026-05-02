@@ -101,16 +101,38 @@ async def submit_scan(
     async def run():
         try:
             _jobs[job_id]["status"] = "running"
-            hits = await asyncio.to_thread(
-                run_hmmscan,
-                tmp.name,
-                get_pfam_path(),
-                evalue,
-            )
-            _jobs[job_id]["hits"]             = hits
-            _jobs[job_id]["summaries"]        = summarise(hits)
-            _jobs[job_id]["sequences_done"]   = len(seqs)
-            _jobs[job_id]["status"]           = "done"
+            if not seqs:
+                _jobs[job_id]["hits"] = []
+                _jobs[job_id]["summaries"] = []
+                _jobs[job_id]["sequences_done"] = 0
+                _jobs[job_id]["status"] = "done"
+                return
+
+            hits: list[dict] = []
+            pfam_path = get_pfam_path()
+
+            for index, seq_record in enumerate(seqs, start=1):
+                seq_tmp = tempfile.NamedTemporaryFile(suffix=".faa", delete=False)
+                seq_tmp.close()
+
+                try:
+                    with open(seq_tmp.name, "w") as seq_handle:
+                        SeqIO.write([seq_record], seq_handle, "fasta")
+                    seq_hits = await asyncio.to_thread(
+                        run_hmmscan,
+                        seq_tmp.name,
+                        pfam_path,
+                        evalue,
+                    )
+                    hits.extend(seq_hits)
+                finally:
+                    os.unlink(seq_tmp.name)
+
+                _jobs[job_id]["hits"] = hits
+                _jobs[job_id]["sequences_done"] = index
+
+            _jobs[job_id]["summaries"] = summarise(hits)
+            _jobs[job_id]["status"] = "done"
         except Exception as exc:
             _jobs[job_id]["status"] = "error"
             _jobs[job_id]["error"]  = str(exc)

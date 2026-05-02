@@ -12,6 +12,8 @@ export function useScanner() {
   const [result, setResult]     = useState<ScanResult | null>(null);
   const [error, setError]       = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [done, setDone]         = useState(0);
+  const [total, setTotal]       = useState(0);
   const pollRef                 = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopPolling = () => {
@@ -22,6 +24,8 @@ export function useScanner() {
     setError(null);
     setResult(null);
     setProgress(0);
+    setDone(0);
+    setTotal(0);
 
     try {
       setState("uploading");
@@ -33,6 +37,8 @@ export function useScanner() {
       pollRef.current = setInterval(async () => {
         try {
           const status = await getScanStatus(job_id);
+          setDone(status.sequences_done);
+          setTotal(status.sequences_total);
           const pct = status.sequences_total > 0
             ? Math.round((status.sequences_done / status.sequences_total) * 100)
             : 0;
@@ -40,6 +46,8 @@ export function useScanner() {
 
           if (status.status === "done") {
             stopPolling();
+            setProgress(100);
+            setDone(status.sequences_total);
             setResult(status);
             setState("done");
           } else if (status.status === "error") {
@@ -65,7 +73,9 @@ export function useScanner() {
     setResult(null);
     setError(null);
     setProgress(0);
+    setDone(0);
+    setTotal(0);
   }, []);
 
-  return { state, result, error, progress, scan, reset };
+  return { state, result, error, progress, done, total, scan, reset };
 }

@@ -4,10 +4,12 @@ import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 interface Props {
   state: "idle" | "uploading" | "scanning" | "done" | "error";
   progress: number;
+  done: number;
+  total: number;
   error: string | null;
 }
 
-export default function StatusBar({ state, progress, error }: Props) {
+export default function StatusBar({ state, progress, done, total, error }: Props) {
   if (state === "idle") return null;
 
   return (
@@ -19,7 +21,7 @@ export default function StatusBar({ state, progress, error }: Props) {
         className="card px-5 py-4"
       >
         {state === "uploading" && (
-          <div className="flex items-center gap-3 text-[var(--text-secondary)]">
+          <div className="flex items-center gap-3 text-(--text-secondary)">
             <Loader2 className="w-4 h-4 animate-spin text-brand-400 shrink-0" />
             <span className="text-sm">Uploading file…</span>
           </div>
@@ -28,13 +30,15 @@ export default function StatusBar({ state, progress, error }: Props) {
         {state === "scanning" && (
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 text-[var(--text-secondary)]">
+              <div className="flex items-center gap-3 text-(--text-secondary)">
                 <Loader2 className="w-4 h-4 animate-spin text-brand-400 shrink-0" />
-                <span className="text-sm">Running HMMER scan…</span>
+                <span className="text-sm">
+                  Running HMMER scan… {total > 0 ? `${done}/${total} sequences` : ""}
+                </span>
               </div>
               <span className="text-sm font-medium text-brand-400">{progress}%</span>
             </div>
-            <div className="w-full bg-[var(--bg-secondary)] rounded-full h-1.5">
+            <div className="w-full bg-(--bg-secondary) rounded-full h-1.5">
               <motion.div
                 className="h-1.5 rounded-full bg-brand-500"
                 animate={{ width: `${progress}%` }}

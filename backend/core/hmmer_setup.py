@@ -16,47 +16,14 @@ APP_DATA = Path(os.environ.get("APPDATA", Path.home())) / "ProteinScout" / "data
 HMMER_DIR = APP_DATA / "hmmer"
 HMMER_BIN_DIR = HMMER_DIR / "bin"
 
-# HMMER 3.4 release - using official FTP or GitHub sources
+# HMMER 3.4 release - source distribution
 HMMER_VERSION = "3.4"
+HMMER_SOURCE_URL = f"http://eddylab.org/software/hmmer/hmmer-{HMMER_VERSION}.tar.gz"
 
-# Platform-specific binary URLs - using multiple sources for reliability
 def get_hmmer_url():
-    """Get the download URL for the current platform."""
-    system = platform.system()
-    machine = platform.machine()
-    
-    print(f"[HMMER Download] Detecting platform: system={system}, machine={machine}")
-    
-    # Try eddylab.org first, with correct path
-    if system == "Linux":
-        if machine in ["x86_64", "amd64"]:
-            # Try different URL formats
-            urls = [
-                f"http://eddylab.org/software/hmmer/hmmer-{HMMER_VERSION}-linux-intel-x86_64.tar.gz",
-                f"http://eddylab.org/software/hmmer/{HMMER_VERSION}/hmmer-{HMMER_VERSION}-linux-intel-x86_64.tar.gz",
-                f"https://github.com/EddyRuan/HMMER/releases/download/v{HMMER_VERSION}/hmmer-{HMMER_VERSION}-linux-intel-x86_64.tar.gz",
-            ]
-            return urls
-        elif machine == "aarch64":
-            urls = [
-                f"http://eddylab.org/software/hmmer/hmmer-{HMMER_VERSION}-linux-arm64.tar.gz",
-                f"http://eddylab.org/software/hmmer/{HMMER_VERSION}/hmmer-{HMMER_VERSION}-linux-arm64.tar.gz",
-            ]
-            return urls
-    elif system == "Darwin":  # macOS
-        urls = [
-            f"http://eddylab.org/software/hmmer/hmmer-{HMMER_VERSION}-macosx-intel.tar.gz",
-            f"http://eddylab.org/software/hmmer/{HMMER_VERSION}/hmmer-{HMMER_VERSION}-macosx-intel.tar.gz",
-        ]
-        return urls
-    elif system == "Windows":
-        urls = [
-            f"http://eddylab.org/software/hmmer/hmmer-{HMMER_VERSION}-msvc-windows-intel-x86_64.zip",
-            f"http://eddylab.org/software/hmmer/{HMMER_VERSION}/hmmer-{HMMER_VERSION}-msvc-windows-intel-x86_64.zip",
-        ]
-        return urls
-    
-    raise RuntimeError(f"Unsupported platform: {system} {machine}")
+    """Get the HMMER source download URL (same for all platforms)."""
+    print(f"[HMMER Download] Source URL: {HMMER_SOURCE_URL}")
+    return [HMMER_SOURCE_URL]
 
 
 def is_hmmer_ready() -> bool:
@@ -99,6 +66,23 @@ async def download_and_setup_hmmer(progress_callback) -> None:
     """Download and extract HMMER binaries."""
     import aiohttp
     
+    # Check for required build tools
+    print("[HMMER Setup] Checking for required build tools…")
+    required_tools = ["make", "gcc"]
+    for tool in required_tools:
+        result = subprocess.run(
+            [tool, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Required build tool '{tool}' not found. "
+                f"Please install build-essential: sudo apt install build-essential"
+            )
+    print("[HMMER Setup] Build tools found: make, gcc")
+    
     HMMER_DIR.mkdir(parents=True, exist_ok=True)
     HMMER_BIN_DIR.mkdir(parents=True, exist_ok=True)
     
@@ -109,7 +93,7 @@ async def download_and_setup_hmmer(progress_callback) -> None:
     print(f"HMMER download URLs to try: {hmmer_urls}")
     
     # Download
-    await progress_callback("hmmer_downloading", 0, "Downloading HMMER binaries…")
+    await progress_callback("hmmer_downloading", 0, "Downloading HMMER source…")
     
     archive_path = None
     downloaded_url = None
@@ -118,9 +102,9 @@ async def download_and_setup_hmmer(progress_callback) -> None:
     for hmmer_url in hmmer_urls:
         try:
             print(f"Trying to download from: {hmmer_url}")
-            await progress_callback("hmmer_downloading", 5, f"Downloading from {hmmer_url.split('/')[-1]}…")
+            await progress_callback("hmmer_downloading", 5, f"Downloading HMMER source…")
             
-            archive_path = HMMER_DIR / ("hmmer.tar.gz" if hmmer_url.endswith(".tar.gz") else "hmmer.zip")
+            archive_path = HMMER_DIR / "hmmer.tar.gz"
             
             timeout = aiohttp.ClientTimeout(total=300, connect=30, sock_read=30)
             async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -144,7 +128,7 @@ async def download_and_setup_hmmer(progress_callback) -> None:
                                 pct = int(downloaded / total * 30)  # 0–30%
                                 mb = downloaded // 1_000_000
                                 total_mb = total // 1_000_000
-                                await progress_callback("hmmer_downloading", pct, f"Downloading HMMER… {mb}/{total_mb} MB")
+                                await progress_callback("hmmer_downloading", pct, f"Downloading HMMER source… {mb}/{total_mb} MB")
                     
                     downloaded_url = hmmer_url
                     print(f"HMMER download complete from {hmmer_url}: {archive_path.stat().st_size} bytes")
@@ -162,7 +146,7 @@ async def download_and_setup_hmmer(progress_callback) -> None:
         raise RuntimeError(error_msg)
     
     # Extract
-    await progress_callback("hmmer_extracting", 35, "Extracting HMMER…")
+    await progress_callback("hmmer_extracting", 35, "Extracting HMMER source…")
     
     try:
         print(f"Extracting {archive_path}…")
@@ -171,83 +155,87 @@ async def download_and_setup_hmmer(progress_callback) -> None:
             shutil.rmtree(temp_extract)
         temp_extract.mkdir(parents=True, exist_ok=True)
         
-        if archive_path.suffix == ".gz":
-            with tarfile.open(archive_path, "r:gz") as tar:
-                tar.extractall(path=temp_extract)
-                
-                # Find the hmmer-X.X directory (should be only actual directory)
-                all_items = list(temp_extract.iterdir())
-                hmmer_extracted = None
-                for item in all_items:
-                    if item.is_dir() and item.name.startswith("hmmer"):
-                        hmmer_extracted = item
-                        break
-                
-                if not hmmer_extracted and all_items:
-                    # Fallback: use first directory
-                    hmmer_extracted = [i for i in all_items if i.is_dir()][0] if any(i.is_dir() for i in all_items) else None
-                
-                if hmmer_extracted:
-                    src_bin = hmmer_extracted / "bin"
-                    print(f"Found HMMER directory: {hmmer_extracted}")
-                    print(f"Looking for bin at: {src_bin}")
-                    
-                    if src_bin.exists():
-                        print(f"Copying binaries from {src_bin} to {HMMER_BIN_DIR}…")
-                        for binary in src_bin.iterdir():
-                            if binary.is_file():
-                                dst = HMMER_BIN_DIR / binary.name
-                                print(f"  Copying {binary.name}…")
-                                shutil.copy2(binary, dst)
-                                # Make executable on Unix
-                                if os.name != "nt":
-                                    os.chmod(dst, 0o755)
-                                    print(f"    Set executable: {dst}")
-                    else:
-                        print(f"ERROR: bin directory not found at {src_bin}")
-                        raise RuntimeError(f"HMMER bin directory not found in archive")
-                else:
-                    print(f"ERROR: Could not find hmmer-X.X directory in archive")
-                    print(f"Contents: {all_items}")
-                    raise RuntimeError(f"HMMER directory not found in archive")
-        
-        elif archive_path.suffix == ".zip":
-            import zipfile
-            with zipfile.ZipFile(archive_path, "r") as zf:
-                zf.extractall(path=temp_extract)
-                
-                all_items = list(temp_extract.iterdir())
-                hmmer_extracted = None
-                for item in all_items:
-                    if item.is_dir() and item.name.startswith("hmmer"):
-                        hmmer_extracted = item
-                        break
-                
-                if not hmmer_extracted and all_items:
-                    hmmer_extracted = [i for i in all_items if i.is_dir()][0] if any(i.is_dir() for i in all_items) else None
-                
-                if hmmer_extracted:
-                    src_bin = hmmer_extracted / "bin"
-                    if src_bin.exists():
-                        for binary in src_bin.iterdir():
-                            if binary.is_file():
-                                dst = HMMER_BIN_DIR / binary.name
-                                shutil.copy2(binary, dst)
-                        print(f"Copied {len(list(HMMER_BIN_DIR.iterdir()))} binaries")
-                    else:
-                        raise RuntimeError(f"HMMER bin directory not found in archive")
-                else:
-                    raise RuntimeError(f"HMMER directory not found in archive")
+        with tarfile.open(archive_path, "r:gz") as tar:
+            tar.extractall(path=temp_extract)
+            
+            # Find the hmmer-X.X directory
+            all_items = list(temp_extract.iterdir())
+            hmmer_source = None
+            for item in all_items:
+                if item.is_dir() and "hmmer" in item.name.lower():
+                    hmmer_source = item
+                    break
+            
+            if not hmmer_source and all_items:
+                hmmer_source = [i for i in all_items if i.is_dir()][0] if any(i.is_dir() for i in all_items) else None
+            
+            if not hmmer_source:
+                raise RuntimeError("Could not find hmmer directory in archive")
+            
+            print(f"Found HMMER source directory: {hmmer_source}")
+            
+            # Compile HMMER
+            await progress_callback("hmmer_compiling", 40, "Compiling HMMER (this may take a minute)…")
+            print(f"Configuring HMMER…")
+            
+            configure_result = subprocess.run(
+                ["./configure", "--prefix", str(HMMER_DIR)],
+                cwd=str(hmmer_source),
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+            
+            if configure_result.returncode != 0:
+                print(f"Configure failed: {configure_result.stderr}")
+                raise RuntimeError(f"HMMER configure failed: {configure_result.stderr[:500]}")
+            
+            print(f"Building HMMER…")
+            make_result = subprocess.run(
+                ["make", "-j4"],
+                cwd=str(hmmer_source),
+                capture_output=True,
+                text=True,
+                timeout=600
+            )
+            
+            if make_result.returncode != 0:
+                print(f"Make failed: {make_result.stderr}")
+                raise RuntimeError(f"HMMER compilation failed: {make_result.stderr[:500]}")
+            
+            print(f"Installing HMMER…")
+            install_result = subprocess.run(
+                ["make", "install"],
+                cwd=str(hmmer_source),
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+            
+            if install_result.returncode != 0:
+                print(f"Install failed: {install_result.stderr}")
+                raise RuntimeError(f"HMMER installation failed: {install_result.stderr[:500]}")
+            
+            # make install already places the binaries in HMMER_DIR/bin,
+            # so there is nothing to copy here. Just ensure they are executable.
+            if HMMER_BIN_DIR.exists():
+                for binary in HMMER_BIN_DIR.iterdir():
+                    if binary.is_file() and binary.name.startswith("hmm"):
+                        os.chmod(binary, 0o755)
+                        print(f"  Ready {binary.name}")
         
         # Clean up temp
         shutil.rmtree(temp_extract, ignore_errors=True)
         archive_path.unlink()  # Clean up archive
-        print("HMMER extraction complete")
-        print(f"HMMER binaries in {HMMER_BIN_DIR}: {list(HMMER_BIN_DIR.glob('*'))}")
+        print("HMMER compilation and installation complete")
+        print(f"HMMER binaries in {HMMER_BIN_DIR}: {list(HMMER_BIN_DIR.glob('hmm*'))}")
     
+    except subprocess.TimeoutExpired:
+        print("HMMER compilation timed out")
+        raise RuntimeError("HMMER compilation timed out (exceeded time limit)")
     except Exception as e:
-        print(f"HMMER extraction error: {type(e).__name__}: {str(e)}")
-        raise RuntimeError(f"HMMER extraction failed: {str(e)}")
+        print(f"HMMER extraction/compilation error: {type(e).__name__}: {str(e)}")
+        raise RuntimeError(f"HMMER compilation failed: {str(e)}")
     
     # Verify
     await progress_callback("hmmer_verifying", 50, "Verifying HMMER installation…")

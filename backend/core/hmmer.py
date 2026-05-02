@@ -134,7 +134,7 @@ def run_hmmscan(
 def _parse_domtblout(domtblout: str) -> list[dict]:
     rows = []
     with open(domtblout) as fh:
-        for qresult in sio_parse(fh, "hmmer3-domtab"):
+        for qresult in sio_parse(fh, "hmmscan3-domtab"):
             seq_id = qresult.id
             for hit in qresult.hits:
                 pfam_ac   = hit.accession.split(".")[0]
