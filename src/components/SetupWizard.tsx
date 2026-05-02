@@ -33,14 +33,25 @@ export default function SetupWizard({ onReady }: Props) {
   useEffect(() => {
     if (!taskId) return;
     const interval = setInterval(async () => {
-      const p = await getDownloadProgress(taskId);
-      setProgress(p);
-      if (p.status === "done") {
+      try {
+        const p = await getDownloadProgress(taskId);
+        setProgress(p);
+        if (p.status === "done") {
+          clearInterval(interval);
+          setStep("done");
+          setTimeout(onReady, 1200);
+        } else if (p.status === "error") {
+          clearInterval(interval);
+          setStep("error");
+        }
+      } catch (err: any) {
+        // Network error or other issue fetching progress
         clearInterval(interval);
-        setStep("done");
-        setTimeout(onReady, 1200);
-      } else if (p.status === "error") {
-        clearInterval(interval);
+        setProgress({
+          status: "error",
+          percent: 0,
+          message: err?.response?.data?.detail || err.message || "Failed to get download status. Check if backend is running."
+        });
         setStep("error");
       }
     }, 1500);

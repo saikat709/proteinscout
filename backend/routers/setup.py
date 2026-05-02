@@ -63,11 +63,25 @@ async def start_download():
     async def run():
         async def progress(status, percent, message):
             _tasks[task_id] = {"status": status, "percent": percent, "message": message}
+            print(f"[Setup Task {task_id}] {status.upper()}: {percent}% - {message}")
 
         try:
+            print(f"[Setup Task {task_id}] Starting download_and_index…")
             await pfam.download_and_index(progress)
+            print(f"[Setup Task {task_id}] Download and index completed successfully!")
         except Exception as exc:
-            _tasks[task_id] = {"status": "error", "percent": 0, "message": str(exc)}
+            error_msg = str(exc)
+            print(f"[Setup Task {task_id}] ERROR: {type(exc).__name__}: {error_msg}")
+            # Add helpful hints for common issues
+            if "Timeout" in error_msg or "timeout" in error_msg:
+                error_msg += " Check if the Pfam FTP server (ftp.ebi.ac.uk) is accessible."
+            elif "Connection" in error_msg or "connection" in error_msg:
+                error_msg += " Check your internet connection."
+            elif "Resuming download" in error_msg or "resume" in error_msg.lower():
+                error_msg += " The partial download will be kept — retry to continue."
+            
+            _tasks[task_id] = {"status": "error", "percent": 0, "message": error_msg}
+            print(f"[Setup Task {task_id}] Task marked as error: {error_msg}")
 
     asyncio.create_task(run())
     return {"task_id": task_id}
