@@ -14,19 +14,32 @@ export default function SetupWizard({ onReady }: Props) {
   const [taskId, setTaskId]        = useState<string | null>(null);
   const setupReady = Boolean(setup?.pfam_ready && setup?.hmmer_available);
 
+  const checkEnvironment = async () => {
+    setStep("checking");
+    setProgress(null);
+
+    try {
+      const s = await checkSetup();
+      setSetup(s);
+      if (s.pfam_ready && s.hmmer_available) {
+        setStep("ready");
+        setTimeout(onReady, 800);
+      } else {
+        setStep("needs-download");
+      }
+    } catch (err: any) {
+      setProgress({
+        status: "error",
+        percent: 0,
+        message: err?.response?.data?.detail || err?.message || "Cannot reach the backend at http://localhost:8000. Start the FastAPI server, then retry.",
+      });
+      setStep("error");
+    }
+  };
+
   // Check setup on mount
   useEffect(() => {
-    checkSetup()
-      .then((s) => {
-        setSetup(s);
-        if (s.pfam_ready && s.hmmer_available) {
-          setStep("ready");
-          setTimeout(onReady, 800);
-        } else {
-          setStep("needs-download");
-        }
-      })
-      .catch(() => setStep("error"));
+    checkEnvironment();
   }, []);
 
   // Poll download progress
@@ -199,7 +212,7 @@ export default function SetupWizard({ onReady }: Props) {
               <div className="mt-5 flex flex-col items-center gap-3 text-red-400">
                 <AlertCircle className="w-7 h-7" />
                 <span className="text-sm text-center max-w-sm">{progress?.message || "Setup failed"}</span>
-                <button className="btn-ghost text-xs" onClick={() => window.location.reload()}>
+                <button className="btn-ghost text-xs" onClick={checkEnvironment}>
                   Retry
                 </button>
               </div>
