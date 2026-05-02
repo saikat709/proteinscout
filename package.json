@@ -8,7 +8,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "npm run build && tauri build"
+    "prepare:bundle": "bash build.sh",
+    "tauri:build": "npm run prepare:bundle && tauri build && bash scripts/post-bundle.sh"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",

@@ -1,0 +1,25 @@
+#!/bin/bash
+# Linux sidecar wrapper for ProteinScout.
+# It runs the bundled Python backend from the app resources directory.
+
+set -e
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+BACKEND_DIR="${SCRIPT_DIR}/resources/backend"
+
+if [ ! -f "${BACKEND_DIR}/main.py" ]; then
+  echo "[Backend] ERROR: bundled backend not found at ${BACKEND_DIR}"
+  exit 1
+fi
+
+if command -v python3 >/dev/null 2>&1; then
+  PYTHON_CMD="python3"
+elif command -v python >/dev/null 2>&1; then
+  PYTHON_CMD="python"
+else
+  echo "[Backend] ERROR: Python not found in PATH"
+  exit 1
+fi
+
+cd "${BACKEND_DIR}"
+exec "${PYTHON_CMD}" -m uvicorn main:app --host 127.0.0.1 --port 8000 --log-level info
