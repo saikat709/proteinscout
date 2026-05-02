@@ -198,8 +198,8 @@ export default function SetupWizard({ onReady }: Props) {
             {step === "error" && (
               <div className="mt-5 flex flex-col items-center gap-3 text-red-400">
                 <AlertCircle className="w-7 h-7" />
-                <span className="text-sm">Setup failed. Is the backend running?</span>
-                <button className="btn-ghost text-xs" onClick={() => setStep("checking")}>
+                <span className="text-sm text-center max-w-sm">{progress?.message || "Setup failed"}</span>
+                <button className="btn-ghost text-xs" onClick={() => window.location.reload()}>
                   Retry
                 </button>
               </div>

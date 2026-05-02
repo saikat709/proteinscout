@@ -11,24 +11,77 @@ from Bio.SearchIO import parse as sio_parse
 
 
 def find_hmmscan() -> str:
-    """Find hmmscan binary — checks PATH and common conda locations."""
+    """Find hmmscan binary — checks local app data first, then PATH."""
     import shutil
 
-    # 1. Try PATH
+    # 1. Try local app data (auto-installed version) first
+    print("[hmmer] Checking local app data…")
+    try:
+        from core.hmmer_setup import get_hmmscan_path, is_hmmer_ready
+        if is_hmmer_ready():
+            hmmscan = get_hmmscan_path()
+            print(f"[hmmer] Found hmmscan in app data: {hmmscan}")
+            return hmmscan
+    except Exception as e:
+        print(f"[hmmer] Error checking app data: {e}")
+
+    # 2. Try PATH
+    print("[hmmer] Searching in PATH…")
     path = shutil.which("hmmscan")
     if path:
+        print(f"[hmmer] Found hmmscan in PATH: {path}")
         return path
 
-    # 2. Try conda env bin (Windows: Scripts/)
+    # 3. Try CONDA_PREFIX
+    print("[hmmer] Checking CONDA_PREFIX…")
     conda_prefix = os.environ.get("CONDA_PREFIX", "")
-    for suffix in [r"Scripts\hmmscan.exe", r"bin\hmmscan"]:
-        candidate = Path(conda_prefix) / suffix
+    if conda_prefix:
+        print(f"[hmmer] CONDA_PREFIX={conda_prefix}")
+        candidates = [
+            Path(conda_prefix) / "bin" / "hmmscan",
+            Path(conda_prefix) / "Scripts" / "hmmscan.exe",
+        ]
+        for candidate in candidates:
+            print(f"[hmmer] Checking {candidate}…")
+            if candidate.exists():
+                print(f"[hmmer] Found hmmscan at: {candidate}")
+                return str(candidate)
+
+    # 4. Try MAMBA_PREFIX (for mamba users)
+    print("[hmmer] Checking MAMBA_PREFIX…")
+    mamba_prefix = os.environ.get("MAMBA_PREFIX", "")
+    if mamba_prefix:
+        print(f"[hmmer] MAMBA_PREFIX={mamba_prefix}")
+        candidates = [
+            Path(mamba_prefix) / "bin" / "hmmscan",
+            Path(mamba_prefix) / "Scripts" / "hmmscan.exe",
+        ]
+        for candidate in candidates:
+            print(f"[hmmer] Checking {candidate}…")
+            if candidate.exists():
+                print(f"[hmmer] Found hmmscan at: {candidate}")
+                return str(candidate)
+
+    # 5. Try common system paths
+    print("[hmmer] Checking common system paths…")
+    system_paths = [
+        Path("/usr/local/bin/hmmscan"),
+        Path("/usr/bin/hmmscan"),
+        Path("/opt/homebrew/bin/hmmscan"),  # macOS M1/M2
+        Path("/usr/local/opt/hmmer/bin/hmmscan"),  # macOS Intel
+    ]
+    for candidate in system_paths:
+        print(f"[hmmer] Checking {candidate}…")
         if candidate.exists():
+            print(f"[hmmer] Found hmmscan at: {candidate}")
             return str(candidate)
 
+    print("[hmmer] hmmscan not found in any location")
     raise FileNotFoundError(
-        "hmmscan not found. Install with: conda install -c bioconda hmmer"
+        "hmmscan not found. It will be automatically downloaded during setup."
     )
+
+
 
 
 def run_hmmscan(
