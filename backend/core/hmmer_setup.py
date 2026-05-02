@@ -11,8 +11,13 @@ import subprocess
 import platform
 from pathlib import Path
 
-# Store HMMER in app data like Pfam
-APP_DATA = Path(os.environ.get("APPDATA", Path.home())) / "ProteinScout" / "data"
+# Store HMMER in app data like Pfam. Choose platform-appropriate location.
+if platform.system() == "Windows":
+    APP_DATA = Path(os.environ.get("APPDATA", Path.home())) / "ProteinScout" / "data"
+elif platform.system() == "Darwin":
+    APP_DATA = Path.home() / "Library" / "Application Support" / "ProteinScout" / "data"
+else:
+    APP_DATA = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "ProteinScout" / "data"
 HMMER_DIR = APP_DATA / "hmmer"
 HMMER_BIN_DIR = HMMER_DIR / "bin"
 
@@ -77,10 +82,24 @@ async def download_and_setup_hmmer(progress_callback) -> None:
             timeout=5
         )
         if result.returncode != 0:
-            raise RuntimeError(
-                f"Required build tool '{tool}' not found. "
-                f"Please install build-essential: sudo apt install build-essential"
-            )
+            # Show platform-appropriate guidance
+            if platform.system() == "Darwin":
+                install_msg = (
+                    "Required build tool '{tool}' not found. "
+                    "On macOS install Xcode command line tools: `xcode-select --install`, or "
+                    "use Homebrew: `brew install make gcc`"
+                )
+            elif platform.system() == "Windows":
+                install_msg = (
+                    "Required build tool '{tool}' not found. "
+                    "On Windows install MSYS2 or appropriate build toolchain (e.g., via https://www.msys2.org/)"
+                )
+            else:
+                install_msg = (
+                    "Required build tool '{tool}' not found. "
+                    "Please install build-essential: sudo apt install build-essential"
+                )
+            raise RuntimeError(install_msg.format(tool=tool))
     print("[HMMER Setup] Build tools found: make, gcc")
     
     HMMER_DIR.mkdir(parents=True, exist_ok=True)
